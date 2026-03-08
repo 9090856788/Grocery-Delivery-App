@@ -1,7 +1,6 @@
 import fastify from "fastify";
-import dotenv from "dotenv";
 import { PORT } from "./src/config/config.js";
-import dbConnect from "./src/dbConnect/dbConnect.js";
+import dbConnect from "./src/db/dbConnect.js";
 
 const app = fastify();
 
