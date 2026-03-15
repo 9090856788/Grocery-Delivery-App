@@ -10,7 +10,7 @@ const generateToken = (user) => {
 
   const refreshToken = jwt.sign(
     { userId: user._id, role: user.role },
-    process.env.ACCESS_TOKEN_SECRET,
+    process.env.REFRESH_TOKEN_SECRET,
     { expiresIn: "7d" },
   );
   return { accessToken, refreshToken };
@@ -34,7 +34,7 @@ export const loginCustomer = async (req, reply) => {
       message: "User Logged Successfully",
       accessToken,
       refreshToken,
-      customer
+      customer,
     });
   } catch (error) {
     return reply.status(500).send({
@@ -44,3 +44,107 @@ export const loginCustomer = async (req, reply) => {
   }
 };
 
+export const loginDeliveryPartner = async (req, reply) => {
+  try {
+    const { email, password } = req.body;
+    let deliveryPartner = await DeliveryPartner.findOne({ email });
+
+    if (!deliveryPartner) {
+      return reply.status(404).send({
+        message: "User is not found",
+      });
+    }
+
+    const isPasswordMatch = password === deliveryPartner.password;
+
+    if (!isPasswordMatch) {
+      return reply.status(400).send({
+        message: "Invalid Credentials",
+      });
+    }
+
+    const { accessToken, refreshToken } = generateToken(deliveryPartner);
+    return reply.send({
+      message: "Logged Successfully",
+      accessToken,
+      refreshToken,
+      deliveryPartner,
+    });
+  } catch (error) {
+    return reply.status(500).send({
+      message: "An error occurred",
+      error,
+    });
+  }
+};
+
+export const refreshToken = async (req, reply) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) {
+    return reply.status(401).send({
+      message: "Unauthorized access",
+    });
+  }
+
+  try {
+    const decode = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    let user;
+
+    if (decode.role == "Customer") {
+      user = await Customer.findById(decode.userId);
+    } else if (decode.role === "DeliveryPartner") {
+      user = await DeliveryPartner.findById(decode.userId);
+    } else {
+      return reply.status(403).send({
+        message: "Role not found",
+      });
+    }
+
+    if (!user) {
+      return reply.status(403).send({
+        message: "User is not found",
+      });
+    }
+    const { accessToken, refreshToken: newRefreshToken } = generateToken(user);
+    return reply.send({
+      message: "Token Refreshed",
+      accessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (error) {
+    return reply.status(403).send({
+      message: "Invalid refresh token",
+    });
+  }
+};
+
+export const fetchUser = async (req, reply) => {
+  const { userId, role } = req.user;
+
+  try {
+    let user;
+    if (role === "Customer") {
+      user = await Customer.findById(userId);
+    } else if (role === "DeliveryPartner") {
+      user = await DeliveryPartner.findById(userId);
+    } else {
+      return reply.status(403).send({
+        message: "User role is not found",
+      });
+    }
+    if (!user) {
+      return reply.status(403).send({
+        message: "User is not found",
+      });
+    }
+    return reply.send({
+      message: "User fetch successfully",
+      user,
+    });
+  } catch (error) {
+    return reply.status(500).send({
+      message: "An error occurred",
+      error,
+    });
+  }
+};
