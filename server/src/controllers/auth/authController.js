@@ -1,4 +1,4 @@
-import { Customer, DeliveryPartner, Admin } from "../../models/userSchema";
+import { Customer, DeliveryPartner } from "../../models/userSchema";
 import jwt from "jsonwebtoken";
 
 const generateToken = (user) => {
